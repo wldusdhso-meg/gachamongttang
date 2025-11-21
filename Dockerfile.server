@@ -1,0 +1,46 @@
+# 서버 빌드 스테이지
+FROM gradle:8.14.3-jdk21 AS build
+WORKDIR /app
+
+# Gradle 캐시를 위한 설정 파일 복사
+COPY build.gradle.kts settings.gradle.kts ./
+COPY gradle ./gradle
+COPY gradlew ./
+COPY gradlew.bat ./
+
+# 모듈별 build.gradle.kts 복사
+COPY common/build.gradle.kts ./common/
+COPY mongddang-api/build.gradle.kts ./mongddang-api/
+
+# 소스 코드 복사
+COPY common/src ./common/src
+COPY mongddang-api/src ./mongddang-api/src
+
+# 프론트엔드 빌드 (정적 파일을 mongddang-api/src/main/resources/static에 복사)
+FROM node:20-alpine AS frontend-build
+WORKDIR /app
+COPY mongddang-front/web/package*.json ./
+RUN npm ci
+COPY mongddang-front/web ./
+RUN npm run build
+
+# 서버 빌드 (프론트엔드 빌드 결과 포함)
+FROM build AS server-build
+COPY --from=frontend-build /app/dist ./mongddang-api/src/main/resources/static/
+RUN chmod +x ./gradlew
+RUN ./gradlew :mongddang-api:bootJar --no-daemon
+
+# 실행 스테이지
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+
+# JAR 파일 복사
+COPY --from=server-build /app/mongddang-api/build/libs/*.jar app.jar
+
+# 포트 노출
+EXPOSE 8080
+
+# 애플리케이션 실행
+ENTRYPOINT ["java", "-jar", "app.jar"]
+
+

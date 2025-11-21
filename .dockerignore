@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Build outputs
+build/
+**/build/
+**/dist/
+**/node_modules/
+**/.gradle/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.cursor/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Documentation
+*.md
+!README.md
+
+# Docker
+docker-compose.yml
+Dockerfile*
+.dockerignore
+
+# Scripts
+deploy.sh
+*.plist
+
+# Test
+**/test/
+**/*Test*.kt
+**/*Test*.java
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+

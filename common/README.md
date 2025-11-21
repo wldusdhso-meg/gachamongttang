@@ -11,5 +11,5 @@
 
 ## 사용
 
-다른 모듈(server, papi)에서 이 모듈을 의존성으로 추가하여 사용합니다.
+다른 모듈(mongddang-api, mongddang-papi)에서 이 모듈을 의존성으로 추가하여 사용합니다.
 

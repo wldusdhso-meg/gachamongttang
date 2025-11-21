@@ -182,7 +182,7 @@ launchctl start com.meg.gachamongddang
 Docker를 사용하는 경우:
 
 ```bash
-# Dockerfile이 이미 있음 (gachamongddang-front/web/Dockerfile)
+# Dockerfile이 이미 있음 (mongddang-front/web/Dockerfile)
 # 백엔드용 Dockerfile 생성 필요
 ```
 

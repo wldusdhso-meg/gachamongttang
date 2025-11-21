@@ -1,0 +1,29 @@
+version: '3.8'
+
+# 개발 환경용 docker-compose
+# 프론트엔드는 개발 서버로 실행, 서버만 도커로 실행
+
+services:
+  # API 서버
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: gachamongddang-server
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SERVER_PORT=8080
+    volumes:
+      - ./logs:/app/logs
+      - ./mongddang-api/src:/app/mongddang-api/src
+    networks:
+      - gachamongddang-network
+    restart: unless-stopped
+
+networks:
+  gachamongddang-network:
+    driver: bridge
+
+

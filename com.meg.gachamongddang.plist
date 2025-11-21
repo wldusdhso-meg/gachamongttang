@@ -9,7 +9,7 @@
     <array>
         <string>/usr/bin/java</string>
         <string>-jar</string>
-        <string>/Users/kakao/Desktop/repo/gachamongddang/server/build/libs/server-0.0.1-SNAPSHOT.jar</string>
+        <string>/Users/kakao/Desktop/repo/gachamongddang/mongddang-api/build/libs/mongddang-api-0.0.1-SNAPSHOT.jar</string>
     </array>
     
     <key>WorkingDirectory</key>

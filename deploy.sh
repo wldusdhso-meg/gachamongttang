@@ -7,11 +7,11 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$SCRIPT_DIR"
-SERVER_DIR="$ROOT_DIR/server"
-FRONTEND_DIR="$ROOT_DIR/gachamongddang-front/web"
+SERVER_DIR="$ROOT_DIR/mongddang-api"
+FRONTEND_DIR="$ROOT_DIR/mongddang-front/web"
 STATIC_DIR="$SERVER_DIR/src/main/resources/static"
 BUILD_DIR="$SERVER_DIR/build/libs"
-APP_NAME="server"
+APP_NAME="mongddang-api"
 JAR_FILE="$BUILD_DIR/${APP_NAME}-0.0.1-SNAPSHOT.jar"
 PID_FILE="$ROOT_DIR/${APP_NAME}.pid"
 LOG_FILE="$ROOT_DIR/logs/app.log"
@@ -43,8 +43,50 @@ build_backend() {
     echo "=== 백엔드 빌드 중 ==="
     cd "$ROOT_DIR"
     
+    # Java 버전 확인 및 설정 (Java 21 권장)
+    JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | sed '/^1\./s///' | cut -d'.' -f1)
+    if [ "$JAVA_VERSION" -lt 17 ]; then
+        echo "⚠️  Java 17 이상이 필요합니다 (권장: Java 21). 현재 버전: $JAVA_VERSION"
+        echo "Java 21로 전환 중..."
+        
+        # Java 21 우선, 없으면 Java 17 찾기
+        if [ -d "/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home" ]; then
+            export JAVA_HOME="/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 21로 전환: $JAVA_HOME"
+        elif [ -d "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home" ]; then
+            export JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 17로 전환: $JAVA_HOME"
+        else
+            echo "❌ Java 17 이상을 찾을 수 없습니다."
+            echo "JAVA_HOME을 Java 17 이상(권장: Java 21)으로 설정하세요."
+            exit 1
+        fi
+        
+        # 변경된 Java 버전 확인
+        NEW_JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | sed '/^1\./s///' | cut -d'.' -f1)
+        echo "현재 Java 버전: $NEW_JAVA_VERSION"
+    elif [ "$JAVA_VERSION" -lt 21 ]; then
+        echo "ℹ️  현재 Java 버전: $JAVA_VERSION (권장: Java 21)"
+        echo "Java 21로 전환 중..."
+        
+        # Java 21 찾기
+        if [ -d "/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home" ]; then
+            export JAVA_HOME="/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 21로 전환: $JAVA_HOME"
+            NEW_JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | sed '/^1\./s///' | cut -d'.' -f1)
+            echo "현재 Java 버전: $NEW_JAVA_VERSION"
+        else
+            echo "⚠️  Java 21을 찾을 수 없습니다. 현재 Java $JAVA_VERSION을 사용합니다."
+        fi
+    else
+        echo "✅ Java 21 사용 중 (버전: $JAVA_VERSION)"
+    fi
+    
     echo "JAR 파일 빌드 중..."
-    ./gradlew :server:clean :server:bootJar
+    ./gradlew :mongddang-api:clean :mongddang-api:bootJar
     
     if [ ! -f "$JAR_FILE" ]; then
         echo "❌ JAR 파일 빌드 실패"
@@ -75,12 +117,46 @@ start_app() {
     echo "=== 애플리케이션 시작 중 ==="
     cd "$ROOT_DIR"
     
-    # Java 버전 확인
+    # Java 버전 확인 및 설정 (Java 21 권장)
     JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | sed '/^1\./s///' | cut -d'.' -f1)
     if [ "$JAVA_VERSION" -lt 17 ]; then
-        echo "❌ Java 17 이상이 필요합니다. 현재 버전: $JAVA_VERSION"
-        echo "JAVA_HOME을 Java 17 이상으로 설정하세요."
-        exit 1
+        echo "⚠️  Java 17 이상이 필요합니다 (권장: Java 21). 현재 버전: $JAVA_VERSION"
+        echo "Java 21로 전환 중..."
+        
+        # Java 21 우선, 없으면 Java 17 찾기
+        if [ -d "/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home" ]; then
+            export JAVA_HOME="/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 21로 전환: $JAVA_HOME"
+        elif [ -d "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home" ]; then
+            export JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 17로 전환: $JAVA_HOME"
+        else
+            echo "❌ Java 17 이상을 찾을 수 없습니다."
+            echo "JAVA_HOME을 Java 17 이상(권장: Java 21)으로 설정하세요."
+            exit 1
+        fi
+        
+        # 변경된 Java 버전 확인
+        NEW_JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | sed '/^1\./s///' | cut -d'.' -f1)
+        echo "현재 Java 버전: $NEW_JAVA_VERSION"
+    elif [ "$JAVA_VERSION" -lt 21 ]; then
+        echo "ℹ️  현재 Java 버전: $JAVA_VERSION (권장: Java 21)"
+        echo "Java 21로 전환 중..."
+        
+        # Java 21 찾기
+        if [ -d "/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home" ]; then
+            export JAVA_HOME="/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 21로 전환: $JAVA_HOME"
+            NEW_JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | sed '/^1\./s///' | cut -d'.' -f1)
+            echo "현재 Java 버전: $NEW_JAVA_VERSION"
+        else
+            echo "⚠️  Java 21을 찾을 수 없습니다. 현재 Java $JAVA_VERSION을 사용합니다."
+        fi
+    else
+        echo "✅ Java 21 사용 중 (버전: $JAVA_VERSION)"
     fi
     
     nohup java -jar "$JAR_FILE" > "$LOG_FILE" 2>&1 &
