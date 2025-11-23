@@ -64,3 +64,7 @@ Thumbs.db
 
 ### IDE ###
 .cursor/
+
+### Frontend Build Output ###
+# 프론트엔드 빌드 산출물 (Gradle이 자동으로 복사)
+mongddang-front/src/main/resources/static/
