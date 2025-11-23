@@ -59,82 +59,6 @@ tasks.register("npmInstall") {
         
         return@upToDateWhen isUpToDate
     }
-    
-    doLast {
-        val webDir = file("web")
-        val packageLock = file("web/package-lock.json")
-        
-        // package-lock.json이 없으면 npm install, 있으면 npm ci
-        try {
-            if (packageLock.exists()) {
-                println("📦 package-lock.json 발견. npm ci 실행 중...")
-                exec {
-                    workingDir = webDir
-                    if (System.getProperty("os.name").contains("Windows")) {
-                        commandLine("cmd", "/c", "npm", "ci", "--legacy-peer-deps")
-                    } else {
-                        commandLine("npm", "ci", "--legacy-peer-deps")
-                    }
-                    isIgnoreExitValue = false
-                }
-            } else {
-                println("⚠️  package-lock.json이 없습니다. npm install 실행 중...")
-                exec {
-                    workingDir = webDir
-                    if (System.getProperty("os.name").contains("Windows")) {
-                        commandLine("cmd", "/c", "npm", "install", "--legacy-peer-deps")
-                    } else {
-                        commandLine("npm", "install", "--legacy-peer-deps")
-                    }
-                    isIgnoreExitValue = false
-                }
-            }
-        } catch (e: Exception) {
-            throw GradleException(
-                "npm install 실패: ${e.message}\n" +
-                "수동으로 'cd ${webDir.absolutePath} && npm install --legacy-peer-deps'를 실행해보세요.",
-                e
-            )
-        }
-        
-        // npm install 완료 후 react-quill 설치 확인
-        val reactQuillDir = file("web/node_modules/react-quill")
-        val reactQuillTypes = file("web/node_modules/react-quill/lib/index.d.ts")
-        val reactQuillMain = file("web/node_modules/react-quill/lib/index.js")
-        val nodeModules = file("web/node_modules")
-        
-        // node_modules 전체 확인
-        if (!nodeModules.exists()) {
-            throw GradleException(
-                "node_modules 디렉토리가 생성되지 않았습니다: ${nodeModules.absolutePath}\n" +
-                "npm install이 실패했을 수 있습니다. 수동으로 'cd ${webDir.absolutePath} && npm install --legacy-peer-deps'를 실행해보세요."
-            )
-        }
-        
-        // react-quill 확인
-        if (!reactQuillDir.exists()) {
-            throw GradleException(
-                "react-quill 디렉토리가 없습니다: ${reactQuillDir.absolutePath}\n" +
-                "package.json에 react-quill이 있는지 확인하고, 수동으로 'cd ${webDir.absolutePath} && npm install --legacy-peer-deps'를 실행해보세요."
-            )
-        }
-        if (!reactQuillTypes.exists()) {
-            throw GradleException(
-                "react-quill 타입 정의 파일이 없습니다: ${reactQuillTypes.absolutePath}\n" +
-                "react-quill 설치가 불완전합니다. 수동으로 'cd ${webDir.absolutePath} && npm install react-quill --legacy-peer-deps'를 실행해보세요."
-            )
-        }
-        if (!reactQuillMain.exists()) {
-            throw GradleException(
-                "react-quill 메인 파일이 없습니다: ${reactQuillMain.absolutePath}\n" +
-                "react-quill 설치가 불완전합니다. 수동으로 'cd ${webDir.absolutePath} && npm install react-quill --legacy-peer-deps'를 실행해보세요."
-            )
-        }
-        println("✅ react-quill 설치 확인 완료:")
-        println("   - 디렉토리: ${reactQuillDir.absolutePath}")
-        println("   - 타입 파일: ${reactQuillTypes.absolutePath}")
-        println("   - 메인 파일: ${reactQuillMain.absolutePath}")
-    }
 }
 
 // 프론트엔드 빌드 태스크
@@ -143,37 +67,6 @@ tasks.register<Exec>("buildFrontend") {
     description = "Build frontend React application"
     dependsOn("npmInstall")
     workingDir = file("web")
-    
-    // npm install이 완료되었는지 확인
-    doFirst {
-        val nodeModules = file("web/node_modules")
-        val reactQuillDir = file("web/node_modules/react-quill")
-        val reactQuillTypes = file("web/node_modules/react-quill/lib/index.d.ts")
-        val reactQuillMain = file("web/node_modules/react-quill/lib/index.js")
-        val quillDir = file("web/node_modules/quill")
-        
-        if (!nodeModules.exists()) {
-            throw GradleException("node_modules 디렉토리가 없습니다: ${nodeModules.absolutePath}")
-        }
-        if (!reactQuillDir.exists()) {
-            throw GradleException("react-quill이 설치되지 않았습니다: ${reactQuillDir.absolutePath}")
-        }
-        if (!reactQuillTypes.exists()) {
-            throw GradleException("react-quill 타입 정의 파일이 없습니다: ${reactQuillTypes.absolutePath}")
-        }
-        if (!reactQuillMain.exists()) {
-            throw GradleException("react-quill 메인 파일이 없습니다: ${reactQuillMain.absolutePath}")
-        }
-        if (!quillDir.exists()) {
-            throw GradleException("quill이 설치되지 않았습니다: ${quillDir.absolutePath}")
-        }
-        
-        println("✅ 빌드 전 의존성 확인 완료:")
-        println("   - node_modules: ${nodeModules.absolutePath}")
-        println("   - react-quill: ${reactQuillDir.absolutePath}")
-        println("   - react-quill/lib/index.js: ${reactQuillMain.absolutePath}")
-        println("   - quill: ${quillDir.absolutePath}")
-    }
     
     // 환경 변수 설정 (Vite가 node_modules를 찾을 수 있도록)
     environment("NODE_PATH", file("web").absolutePath)

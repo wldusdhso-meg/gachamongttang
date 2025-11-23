@@ -8,9 +8,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$SCRIPT_DIR"
 SERVER_DIR="$ROOT_DIR/mongddang-api"
-FRONTEND_DIR="$ROOT_DIR/mongddang-front/web"
 FRONTEND_SERVER_DIR="$ROOT_DIR/mongddang-front"
-STATIC_DIR="$SERVER_DIR/src/main/resources/static"
 BUILD_DIR="$SERVER_DIR/build/libs"
 FRONTEND_BUILD_DIR="$FRONTEND_SERVER_DIR/build/libs"
 APP_NAME="mongddang-api"
@@ -24,25 +22,10 @@ FRONTEND_LOG_FILE="$ROOT_DIR/logs/frontend.log"
 
 # 로그 디렉토리 생성
 mkdir -p "$ROOT_DIR/logs"
-mkdir -p "$STATIC_DIR"
-
-build_frontend() {
-    echo "=== 프론트엔드 빌드 중 ==="
-    cd "$FRONTEND_DIR"
-    
-    if [ ! -d "node_modules" ]; then
-        echo "의존성 설치 중..."
-        npm install
-    fi
-    
-    echo "프론트엔드 빌드 중..."
-    npm run build
-    
-    echo "✅ 프론트엔드 빌드 완료 (빌드된 파일은 mongddang-front 모듈 빌드 시 자동으로 복사됨)"
-}
 
 build_frontend_server() {
     echo "=== 프론트엔드 서버 빌드 중 ==="
+    echo "ℹ️  npm install과 프론트엔드 빌드는 Gradle 태스크가 자동으로 처리합니다."
     cd "$ROOT_DIR"
     
     # Java 버전 확인 및 설정 (Java 21 권장)
@@ -75,7 +58,10 @@ build_frontend_server() {
     fi
     
     echo "프론트엔드 서버 JAR 파일 빌드 중..."
-    ./gradlew :mongddang-front:clean :mongddang-front:build
+    echo "  - npmInstall 태스크가 자동으로 npm ci를 실행합니다"
+    echo "  - buildFrontend 태스크가 자동으로 npm run build를 실행합니다"
+    echo "  - 빌드된 파일이 src/main/resources/static/로 자동 복사됩니다"
+    ./gradlew :mongddang-front:clean :mongddang-front:bootJar
     
     if [ ! -f "$FRONTEND_JAR_FILE" ]; then
         echo "❌ 프론트엔드 서버 JAR 파일 빌드 실패"
@@ -144,7 +130,7 @@ build_backend() {
 
 build_all() {
     echo "=== 전체 빌드 시작 ==="
-    build_frontend
+    echo "빌드 순서: 백엔드 -> 프론트엔드 서버 (프론트엔드 빌드는 Gradle이 자동 처리)"
     build_backend
     build_frontend_server
     echo "✅ 전체 빌드 완료"
@@ -403,9 +389,6 @@ case "$1" in
     build)
         build_all
         ;;
-    build-frontend)
-        build_frontend
-        ;;
     build-backend)
         build_backend
         ;;
@@ -433,6 +416,9 @@ case "$1" in
         stop_frontend
         ;;
     restart)
+        restart_all
+        ;;
+    restart-backend)
         restart_app
         ;;
     restart-frontend)
@@ -445,13 +431,12 @@ case "$1" in
         status_app
         ;;
     *)
-        echo "사용법: $0 {build|build-frontend|build-backend|build-frontend-server|start|start-frontend|start-all|stop|stop-frontend|stop-all|restart|restart-frontend|restart-all|status}"
+        echo "사용법: $0 {build|build-backend|build-frontend-server|start|start-frontend|start-all|stop|stop-frontend|stop-all|restart|restart-backend|restart-frontend|restart-all|status}"
         echo ""
         echo "빌드 명령어:"
-        echo "  build                  - 프론트엔드, 백엔드, 프론트엔드 서버 모두 빌드"
-        echo "  build-frontend         - 프론트엔드만 빌드 (npm run build)"
+        echo "  build                  - 백엔드와 프론트엔드 서버 모두 빌드 (프론트엔드 빌드는 Gradle이 자동 처리)"
         echo "  build-backend          - 백엔드만 빌드"
-        echo "  build-frontend-server  - 프론트엔드 서버만 빌드"
+        echo "  build-frontend-server  - 프론트엔드 서버만 빌드 (npm install과 빌드 포함)"
         echo ""
         echo "시작 명령어:"
         echo "  start                  - 백엔드 서버 시작 (8080)"
@@ -464,9 +449,10 @@ case "$1" in
         echo "  stop-all                - 백엔드와 프론트엔드 서버 모두 중지"
         echo ""
         echo "재시작 명령어:"
-        echo "  restart                - 백엔드 서버 재시작"
-        echo "  restart-frontend        - 프론트엔드 서버 재시작"
-        echo "  restart-all             - 백엔드와 프론트엔드 서버 모두 재시작"
+        echo "  restart                - 백엔드와 프론트엔드 서버 모두 재시작"
+        echo "  restart-backend         - 백엔드 서버만 재시작"
+        echo "  restart-frontend        - 프론트엔드 서버만 재시작"
+        echo "  restart-all             - 백엔드와 프론트엔드 서버 모두 재시작 (restart와 동일)"
         echo ""
         echo "기타:"
         echo "  status                 - 백엔드 서버 상태 확인"
