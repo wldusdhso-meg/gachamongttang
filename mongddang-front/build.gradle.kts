@@ -33,13 +33,13 @@ tasks.register<Exec>("npmInstall") {
     description = "Install npm dependencies"
     workingDir = file("web")
     
-    // 운영서버에서도 확실하게 설치되도록 --legacy-peer-deps 사용
     // node_modules가 없거나 package.json이 변경된 경우에만 실행
     inputs.file("web/package.json")
     inputs.file("web/package-lock.json")
     outputs.dir("web/node_modules")
     
-    // 운영서버에서도 확실하게 설치되도록 --legacy-peer-deps 사용
+    // npm 11+ 버전에서 peer dependency 충돌 방지를 위해 --legacy-peer-deps 사용
+    // 운영서버에서도 확실하게 설치되도록 설정
     if (System.getProperty("os.name").contains("Windows")) {
         commandLine("cmd", "/c", "npm", "install", "--legacy-peer-deps")
     } else {
@@ -48,6 +48,21 @@ tasks.register<Exec>("npmInstall") {
     
     // 에러 발생 시 상세 로그 출력
     isIgnoreExitValue = false
+    
+    // npm install 완료 후 react-quill 설치 확인
+    doLast {
+        val reactQuillDir = file("web/node_modules/react-quill")
+        val reactQuillTypes = file("web/node_modules/react-quill/lib/index.d.ts")
+        if (!reactQuillDir.exists() || !reactQuillTypes.exists()) {
+            throw GradleException(
+                "react-quill이 제대로 설치되지 않았습니다.\n" +
+                "디렉토리 존재: ${reactQuillDir.exists()}\n" +
+                "타입 파일 존재: ${reactQuillTypes.exists()}\n" +
+                "수동으로 'cd mongddang-front/web && npm install --legacy-peer-deps'를 실행해보세요."
+            )
+        }
+        println("✅ react-quill 설치 확인 완료: ${reactQuillTypes.absolutePath}")
+    }
 }
 
 // 프론트엔드 빌드 태스크
