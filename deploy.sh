@@ -15,8 +15,6 @@ APP_NAME="mongddang-api"
 FRONTEND_APP_NAME="mongddang-front"
 JAR_FILE="$BUILD_DIR/${APP_NAME}-0.0.1-SNAPSHOT.jar"
 FRONTEND_JAR_FILE="$FRONTEND_BUILD_DIR/${FRONTEND_APP_NAME}-0.0.1-SNAPSHOT.jar"
-PID_FILE="$ROOT_DIR/${APP_NAME}.pid"
-FRONTEND_PID_FILE="$ROOT_DIR/${FRONTEND_APP_NAME}.pid"
 LOG_FILE="$ROOT_DIR/logs/app.log"
 FRONTEND_LOG_FILE="$ROOT_DIR/logs/frontend.log"
 
@@ -137,8 +135,10 @@ build_all() {
 }
 
 start_app() {
-    if [ -f "$PID_FILE" ] && ps -p $(cat "$PID_FILE") > /dev/null 2>&1; then
-        echo "⚠️  애플리케이션이 이미 실행 중입니다. (PID: $(cat $PID_FILE))"
+    # 실행 중인 프로세스 확인
+    EXISTING_PID=$(ps aux | grep -E "java.*mongddang-api.*\.jar" | grep -v grep | awk '{print $2}' | head -1)
+    if [ -n "$EXISTING_PID" ]; then
+        echo "⚠️  애플리케이션이 이미 실행 중입니다. (PID: $EXISTING_PID)"
         return
     fi
     
@@ -193,15 +193,14 @@ start_app() {
     fi
     
     nohup java -jar "$JAR_FILE" > "$LOG_FILE" 2>&1 &
-    echo $! > "$PID_FILE"
-    
-    echo "✅ 백엔드 서버가 시작되었습니다. (PID: $(cat $PID_FILE))"
-    echo "📋 로그 확인: tail -f $LOG_FILE"
-    echo "🌐 백엔드 서버: http://localhost:8080"
     
     # 시작 확인
     sleep 3
-    if ps -p $(cat "$PID_FILE") > /dev/null 2>&1; then
+    PID=$(ps aux | grep -E "java.*mongddang-api.*\.jar" | grep -v grep | awk '{print $2}' | head -1)
+    if [ -n "$PID" ]; then
+        echo "✅ 백엔드 서버가 시작되었습니다. (PID: $PID)"
+        echo "📋 로그 확인: tail -f $LOG_FILE"
+        echo "🌐 백엔드 서버: http://localhost:8080"
         echo "✅ 애플리케이션이 정상적으로 실행 중입니다."
     else
         echo "❌ 애플리케이션 시작 실패. 로그를 확인하세요: $LOG_FILE"
@@ -210,8 +209,10 @@ start_app() {
 }
 
 start_frontend() {
-    if [ -f "$FRONTEND_PID_FILE" ] && ps -p $(cat "$FRONTEND_PID_FILE") > /dev/null 2>&1; then
-        echo "⚠️  프론트엔드 서버가 이미 실행 중입니다. (PID: $(cat $FRONTEND_PID_FILE))"
+    # 실행 중인 프로세스 확인
+    EXISTING_PID=$(ps aux | grep -E "java.*mongddang-front.*\.jar" | grep -v grep | awk '{print $2}' | head -1)
+    if [ -n "$EXISTING_PID" ]; then
+        echo "⚠️  프론트엔드 서버가 이미 실행 중입니다. (PID: $EXISTING_PID)"
         return
     fi
     
@@ -253,15 +254,14 @@ start_frontend() {
     fi
     
     nohup java -jar "$FRONTEND_JAR_FILE" > "$FRONTEND_LOG_FILE" 2>&1 &
-    echo $! > "$FRONTEND_PID_FILE"
-    
-    echo "✅ 프론트엔드 서버가 시작되었습니다. (PID: $(cat $FRONTEND_PID_FILE))"
-    echo "📋 로그 확인: tail -f $FRONTEND_LOG_FILE"
-    echo "🌐 프론트엔드 서버: http://localhost:8081"
     
     # 시작 확인
     sleep 3
-    if ps -p $(cat "$FRONTEND_PID_FILE") > /dev/null 2>&1; then
+    PID=$(ps aux | grep -E "java.*mongddang-front.*\.jar" | grep -v grep | awk '{print $2}' | head -1)
+    if [ -n "$PID" ]; then
+        echo "✅ 프론트엔드 서버가 시작되었습니다. (PID: $PID)"
+        echo "📋 로그 확인: tail -f $FRONTEND_LOG_FILE"
+        echo "🌐 프론트엔드 서버: http://localhost:8081"
         echo "✅ 프론트엔드 서버가 정상적으로 실행 중입니다."
     else
         echo "❌ 프론트엔드 서버 시작 실패. 로그를 확인하세요: $FRONTEND_LOG_FILE"
@@ -270,66 +270,73 @@ start_frontend() {
 }
 
 stop_app() {
-    if [ ! -f "$PID_FILE" ]; then
+    # 실행 중인 프로세스 찾기
+    PID=$(ps aux | grep -E "java.*mongddang-api.*\.jar" | grep -v grep | awk '{print $2}' | head -1)
+    
+    if [ -z "$PID" ]; then
         echo "⚠️  백엔드 서버가 실행 중이 아닙니다."
-    else
-        PID=$(cat "$PID_FILE")
-        if ps -p $PID > /dev/null 2>&1; then
-            echo "=== 백엔드 서버 종료 중 ==="
-            kill $PID
-            rm "$PID_FILE"
-            
-            # 프로세스가 완전히 종료될 때까지 대기
-            for i in {1..10}; do
-                if ! ps -p $PID > /dev/null 2>&1; then
-                    break
-                fi
-                sleep 1
-            done
-            
-            if ps -p $PID > /dev/null 2>&1; then
-                echo "⚠️  강제 종료 중..."
-                kill -9 $PID
-            fi
-            
-            echo "✅ 백엔드 서버가 종료되었습니다."
+        return
+    fi
+    
+    echo "=== 백엔드 서버 종료 중 (PID: $PID) ==="
+    kill "$PID" 2>&1 || true
+    
+    # 프로세스가 완전히 종료될 때까지 대기
+    for i in {1..10}; do
+        if ! ps -p "$PID" > /dev/null 2>&1; then
+            echo "✅ 프로세스가 종료되었습니다. (${i}초 후)"
+            break
+        fi
+        sleep 1
+    done
+    
+    if ps -p "$PID" > /dev/null 2>&1; then
+        echo "⚠️  정상 종료 실패. 강제 종료 중..."
+        kill -9 "$PID" 2>&1 || true
+        sleep 1
+        if ps -p "$PID" > /dev/null 2>&1; then
+            echo "❌ 강제 종료도 실패했습니다. PID: $PID"
         else
-            echo "⚠️  프로세스를 찾을 수 없습니다."
-            rm "$PID_FILE"
+            echo "✅ 강제 종료 완료"
         fi
     fi
+    
+    echo "✅ 백엔드 서버가 종료되었습니다."
 }
 
 stop_frontend() {
-    if [ ! -f "$FRONTEND_PID_FILE" ]; then
+    # 실행 중인 프로세스 찾기
+    PID=$(ps aux | grep -E "java.*mongddang-front.*\.jar" | grep -v grep | awk '{print $2}' | head -1)
+    
+    if [ -z "$PID" ]; then
         echo "⚠️  프론트엔드 서버가 실행 중이 아닙니다."
         return
     fi
     
-    PID=$(cat "$FRONTEND_PID_FILE")
-    if ps -p $PID > /dev/null 2>&1; then
-        echo "=== 프론트엔드 서버 종료 중 ==="
-        kill $PID
-        rm "$FRONTEND_PID_FILE"
-        
-        # 프로세스가 완전히 종료될 때까지 대기
-        for i in {1..10}; do
-            if ! ps -p $PID > /dev/null 2>&1; then
-                break
-            fi
-            sleep 1
-        done
-        
-        if ps -p $PID > /dev/null 2>&1; then
-            echo "⚠️  강제 종료 중..."
-            kill -9 $PID
+    echo "=== 프론트엔드 서버 종료 중 (PID: $PID) ==="
+    kill "$PID" 2>&1 || true
+    
+    # 프로세스가 완전히 종료될 때까지 대기
+    for i in {1..10}; do
+        if ! ps -p "$PID" > /dev/null 2>&1; then
+            echo "✅ 프로세스가 종료되었습니다. (${i}초 후)"
+            break
         fi
-        
-        echo "✅ 프론트엔드 서버가 종료되었습니다."
-    else
-        echo "⚠️  프로세스를 찾을 수 없습니다."
-        rm "$FRONTEND_PID_FILE"
+        sleep 1
+    done
+    
+    if ps -p "$PID" > /dev/null 2>&1; then
+        echo "⚠️  정상 종료 실패. 강제 종료 중..."
+        kill -9 "$PID" 2>&1 || true
+        sleep 1
+        if ps -p "$PID" > /dev/null 2>&1; then
+            echo "❌ 강제 종료도 실패했습니다. PID: $PID"
+        else
+            echo "✅ 강제 종료 완료"
+        fi
     fi
+    
+    echo "✅ 프론트엔드 서버가 종료되었습니다."
 }
 
 restart_app() {
@@ -358,22 +365,21 @@ restart_all() {
 status_app() {
     echo "=== 애플리케이션 상태 ==="
     
-    if [ -f "$PID_FILE" ] && ps -p $(cat "$PID_FILE") > /dev/null 2>&1; then
-        PID=$(cat "$PID_FILE")
+    # 실행 중인 프로세스 찾기
+    PID=$(ps aux | grep -E "java.*mongddang-api.*\.jar" | grep -v grep | awk '{print $2}' | head -1)
+    
+    if [ -n "$PID" ]; then
         echo "✅ 실행 중 (PID: $PID)"
         echo "📋 로그: $LOG_FILE"
         echo "🌐 URL: http://localhost:8080"
         
         # 메모리 사용량 확인
         if command -v ps > /dev/null; then
-            MEM=$(ps -o rss= -p $PID 2>/dev/null | awk '{printf "%.1f MB", $1/1024}')
+            MEM=$(ps -o rss= -p "$PID" 2>/dev/null | awk '{printf "%.1f MB", $1/1024}')
             echo "💾 메모리: $MEM"
         fi
     else
         echo "❌ 중지됨"
-        if [ -f "$PID_FILE" ]; then
-            rm "$PID_FILE"
-        fi
     fi
     
     if [ -f "$JAR_FILE" ]; then
