@@ -74,11 +74,15 @@ tasks.register<Exec>("buildFrontend") {
     
     // npm install이 완료되었는지 확인
     doFirst {
-        val nodeModules = file("web/node_modules/react-quill")
+        val nodeModules = file("web/node_modules")
+        val reactQuillDir = file("web/node_modules/react-quill")
         val reactQuillTypes = file("web/node_modules/react-quill/lib/index.d.ts")
         val reactQuillMain = file("web/node_modules/react-quill/lib/index.js")
         
         if (!nodeModules.exists()) {
+            throw GradleException("node_modules 디렉토리가 없습니다. npm install을 먼저 실행하세요.")
+        }
+        if (!reactQuillDir.exists()) {
             throw GradleException("react-quill이 설치되지 않았습니다. npm install을 먼저 실행하세요.")
         }
         if (!reactQuillTypes.exists()) {
@@ -88,11 +92,23 @@ tasks.register<Exec>("buildFrontend") {
             throw GradleException("react-quill 메인 파일이 없습니다: ${reactQuillMain.absolutePath}")
         }
         println("✅ react-quill 모듈 확인:")
-        println("   - 디렉토리: ${nodeModules.absolutePath}")
+        println("   - node_modules: ${nodeModules.absolutePath}")
+        println("   - react-quill 디렉토리: ${reactQuillDir.absolutePath}")
         println("   - 타입 파일: ${reactQuillTypes.absolutePath}")
         println("   - 메인 파일: ${reactQuillMain.absolutePath}")
+        
+        // package.json에서 react-quill 확인
+        val packageJson = file("web/package.json")
+        if (packageJson.exists()) {
+            val content = packageJson.readText()
+            if (!content.contains("react-quill")) {
+                throw GradleException("package.json에 react-quill이 없습니다.")
+            }
+        }
     }
     
+    // 환경 변수 설정 (Vite가 node_modules를 찾을 수 있도록)
+    environment("NODE_PATH", file("web").absolutePath)
     commandLine("npm", "run", "build")
     
     inputs.dir("web/src")
