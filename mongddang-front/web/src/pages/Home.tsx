@@ -14,7 +14,9 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    fetchProducts().then(setProducts);
+    fetchProducts({ size: 20 }).then((response) => {
+      setProducts(response.products);
+    });
   }, []);
 
   const trending = useMemo(() => products.slice(0, 9), [products]);

@@ -9,11 +9,13 @@ export default function Search() {
   const [category, setCategory] = useState('all');
 
   useEffect(() => {
-    fetchProducts().then(setProducts);
+    fetchProducts({ size: 100 }).then((response) => {
+      setProducts(response.products);
+    });
   }, []);
 
   const filtered = useMemo(() => products
-    .filter(p => (category === 'all' || p.category === category))
+    .filter(p => (category === 'all' || p.categoryName === category))
     .filter(p => p.name.toLowerCase().includes(query.toLowerCase() || '')),
   [products, query, category]);
 

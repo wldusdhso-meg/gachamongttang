@@ -1,6 +1,6 @@
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-const API_BASE_URL = '/v1';
+const API_BASE_URL = '/api/v1';
 
 export async function apiFetch<T>(
   path: string,

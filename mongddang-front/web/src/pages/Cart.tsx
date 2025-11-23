@@ -26,7 +26,7 @@ export default function Cart() {
               <div key={item.productId} className="card bg-base-100 shadow">
                 <div className="card-body">
                   <div className="flex items-center gap-4">
-                    <img src={product.imageUrl} className="w-24 h-24 object-cover rounded" />
+                    <img src={product.imageUrl || '/placeholder.png'} className="w-24 h-24 object-cover rounded" />
                     <div className="flex-1">
                       <div className="font-semibold">{product.name}</div>
                       <div className="text-sm text-base-content/70">{formatPriceKRW(product.price)}</div>

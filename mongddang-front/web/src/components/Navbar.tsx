@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ThemeToggle } from './ThemeToggle';
 import { useCart } from '../context/CartContext';
 
 export function Navbar() {
   const { items } = useCart();
   const location = useLocation();
   const count = items.reduce((sum, i) => sum + i.quantity, 0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
   return (
     <div className="bg-base-100 border-b">
       <div className="mx-auto max-w-6xl w-full px-4 py-4">
@@ -13,9 +15,45 @@ export function Navbar() {
         <div className="flex items-center">
           {/* 왼쪽 아이콘들 */}
           <div className="flex gap-2 flex-1">
-            <button className="btn btn-ghost btn-circle" aria-label="menu">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
-            </button>
+            <div className="dropdown dropdown-bottom">
+              <button 
+                className="btn btn-ghost btn-circle" 
+                aria-label="menu"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+              </button>
+              {isMenuOpen && (
+                <ul className="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow-lg border border-base-300 mt-2">
+                  <li>
+                    <Link to="/products" onClick={() => setIsMenuOpen(false)}>
+                      소품
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/gacha" onClick={() => setIsMenuOpen(false)}>
+                      가챠
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/notices" onClick={() => setIsMenuOpen(false)}>
+                      공지사항
+                    </Link>
+                  </li>
+                  <li><hr className="my-1" /></li>
+                  <li>
+                    <Link to="/admin/products" onClick={() => setIsMenuOpen(false)}>
+                      상품관리
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/admin/categories" onClick={() => setIsMenuOpen(false)}>
+                      카테고리관리
+                    </Link>
+                  </li>
+                </ul>
+              )}
+            </div>
             <Link to="/search" className="btn btn-ghost btn-circle" aria-label="search">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"/></svg>
             </Link>
@@ -49,7 +87,6 @@ export function Navbar() {
               <span className="indicator-item badge badge-primary">{count}</span>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9m12-9l2 9M9 22a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/></svg>
             </Link>
-            <ThemeToggle />
           </div>
         </div>
       </div>
@@ -89,6 +126,13 @@ export function Navbar() {
           </div>
         </div>
       </div>
+      {/* 메뉴가 열려있을 때 배경 클릭으로 닫기 */}
+      {isMenuOpen && (
+        <div 
+          className="fixed inset-0 z-0" 
+          onClick={() => setIsMenuOpen(false)}
+        />
+      )}
     </div>
   );
 }

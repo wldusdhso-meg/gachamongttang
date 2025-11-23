@@ -16,6 +16,9 @@ import Wishlist from './pages/Wishlist';
 import Gacha from './pages/Gacha';
 import { BannerSlider } from './components/BannerSlider';
 import Search from './pages/Search';
+import AdminProducts from './pages/admin/Products';
+import AdminCategories from './pages/admin/Categories';
+import { Navigate } from 'react-router-dom';
 
 function App() {
   return (
@@ -41,6 +44,10 @@ function App() {
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/complete" element={<Complete />} />
               <Route path="/health" element={<Health />} />
+              {/* 어드민 라우팅 */}
+              <Route path="/admin/products" element={<AdminProducts />} />
+              <Route path="/admin/categories" element={<AdminCategories />} />
+              <Route path="/admin/*" element={<Navigate to="/admin/products" replace />} />
               <Route path="*" element={<div className="mx-auto max-w-5xl px-4 py-6">Not Found. <Link to="/" className="underline">Go Home</Link></div>} />
             </Routes>
           </main>

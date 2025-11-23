@@ -9,12 +9,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$SCRIPT_DIR"
 SERVER_DIR="$ROOT_DIR/mongddang-api"
 FRONTEND_DIR="$ROOT_DIR/mongddang-front/web"
+FRONTEND_SERVER_DIR="$ROOT_DIR/mongddang-front"
 STATIC_DIR="$SERVER_DIR/src/main/resources/static"
 BUILD_DIR="$SERVER_DIR/build/libs"
+FRONTEND_BUILD_DIR="$FRONTEND_SERVER_DIR/build/libs"
 APP_NAME="mongddang-api"
+FRONTEND_APP_NAME="mongddang-front"
 JAR_FILE="$BUILD_DIR/${APP_NAME}-0.0.1-SNAPSHOT.jar"
+FRONTEND_JAR_FILE="$FRONTEND_BUILD_DIR/${FRONTEND_APP_NAME}-0.0.1-SNAPSHOT.jar"
 PID_FILE="$ROOT_DIR/${APP_NAME}.pid"
+FRONTEND_PID_FILE="$ROOT_DIR/${FRONTEND_APP_NAME}.pid"
 LOG_FILE="$ROOT_DIR/logs/app.log"
+FRONTEND_LOG_FILE="$ROOT_DIR/logs/frontend.log"
 
 # 로그 디렉토리 생성
 mkdir -p "$ROOT_DIR/logs"
@@ -32,11 +38,51 @@ build_frontend() {
     echo "프론트엔드 빌드 중..."
     npm run build
     
-    echo "빌드된 파일을 Spring Boot static 폴더로 복사 중..."
-    rm -rf "$STATIC_DIR"/*
-    cp -r dist/* "$STATIC_DIR/"
+    echo "✅ 프론트엔드 빌드 완료 (빌드된 파일은 mongddang-front 모듈 빌드 시 자동으로 복사됨)"
+}
+
+build_frontend_server() {
+    echo "=== 프론트엔드 서버 빌드 중 ==="
+    cd "$ROOT_DIR"
     
-    echo "✅ 프론트엔드 빌드 완료"
+    # Java 버전 확인 및 설정 (Java 21 권장)
+    JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | sed '/^1\./s///' | cut -d'.' -f1)
+    if [ "$JAVA_VERSION" -lt 17 ]; then
+        echo "⚠️  Java 17 이상이 필요합니다 (권장: Java 21). 현재 버전: $JAVA_VERSION"
+        echo "Java 21로 전환 중..."
+        
+        if [ -d "/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home" ]; then
+            export JAVA_HOME="/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 21로 전환: $JAVA_HOME"
+        elif [ -d "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home" ]; then
+            export JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 17로 전환: $JAVA_HOME"
+        else
+            echo "❌ Java 17 이상을 찾을 수 없습니다."
+            exit 1
+        fi
+    elif [ "$JAVA_VERSION" -lt 21 ]; then
+        echo "ℹ️  현재 Java 버전: $JAVA_VERSION (권장: Java 21)"
+        if [ -d "/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home" ]; then
+            export JAVA_HOME="/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 21로 전환: $JAVA_HOME"
+        fi
+    else
+        echo "✅ Java 21 사용 중 (버전: $JAVA_VERSION)"
+    fi
+    
+    echo "프론트엔드 서버 JAR 파일 빌드 중..."
+    ./gradlew :mongddang-front:clean :mongddang-front:build
+    
+    if [ ! -f "$FRONTEND_JAR_FILE" ]; then
+        echo "❌ 프론트엔드 서버 JAR 파일 빌드 실패"
+        exit 1
+    fi
+    
+    echo "✅ 프론트엔드 서버 빌드 완료: $FRONTEND_JAR_FILE"
 }
 
 build_backend() {
@@ -85,8 +131,8 @@ build_backend() {
         echo "✅ Java 21 사용 중 (버전: $JAVA_VERSION)"
     fi
     
-    echo "JAR 파일 빌드 중..."
-    ./gradlew :mongddang-api:clean :mongddang-api:bootJar
+    echo "JAR 파일 빌드 중 (테스트 포함)..."
+    ./gradlew :mongddang-api:clean :mongddang-api:build
     
     if [ ! -f "$JAR_FILE" ]; then
         echo "❌ JAR 파일 빌드 실패"
@@ -100,6 +146,7 @@ build_all() {
     echo "=== 전체 빌드 시작 ==="
     build_frontend
     build_backend
+    build_frontend_server
     echo "✅ 전체 빌드 완료"
 }
 
@@ -162,9 +209,9 @@ start_app() {
     nohup java -jar "$JAR_FILE" > "$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"
     
-    echo "✅ 애플리케이션이 시작되었습니다. (PID: $(cat $PID_FILE))"
+    echo "✅ 백엔드 서버가 시작되었습니다. (PID: $(cat $PID_FILE))"
     echo "📋 로그 확인: tail -f $LOG_FILE"
-    echo "🌐 애플리케이션: http://localhost:8080"
+    echo "🌐 백엔드 서버: http://localhost:8080"
     
     # 시작 확인
     sleep 3
@@ -176,17 +223,108 @@ start_app() {
     fi
 }
 
-stop_app() {
-    if [ ! -f "$PID_FILE" ]; then
-        echo "⚠️  애플리케이션이 실행 중이 아닙니다."
+start_frontend() {
+    if [ -f "$FRONTEND_PID_FILE" ] && ps -p $(cat "$FRONTEND_PID_FILE") > /dev/null 2>&1; then
+        echo "⚠️  프론트엔드 서버가 이미 실행 중입니다. (PID: $(cat $FRONTEND_PID_FILE))"
         return
     fi
     
-    PID=$(cat "$PID_FILE")
+    if [ ! -f "$FRONTEND_JAR_FILE" ]; then
+        echo "❌ 프론트엔드 서버 JAR 파일을 찾을 수 없습니다. 먼저 빌드하세요: ./deploy.sh build"
+        exit 1
+    fi
+    
+    echo "=== 프론트엔드 서버 시작 중 ==="
+    cd "$ROOT_DIR"
+    
+    # Java 버전 확인 및 설정 (Java 21 권장)
+    JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | sed '/^1\./s///' | cut -d'.' -f1)
+    if [ "$JAVA_VERSION" -lt 17 ]; then
+        echo "⚠️  Java 17 이상이 필요합니다 (권장: Java 21). 현재 버전: $JAVA_VERSION"
+        echo "Java 21로 전환 중..."
+        
+        if [ -d "/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home" ]; then
+            export JAVA_HOME="/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 21로 전환: $JAVA_HOME"
+        elif [ -d "/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home" ]; then
+            export JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk-17.jdk/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 17로 전환: $JAVA_HOME"
+        else
+            echo "❌ Java 17 이상을 찾을 수 없습니다."
+            exit 1
+        fi
+    elif [ "$JAVA_VERSION" -lt 21 ]; then
+        echo "ℹ️  현재 Java 버전: $JAVA_VERSION (권장: Java 21)"
+        if [ -d "/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home" ]; then
+            export JAVA_HOME="/Users/kakao/Library/Java/JavaVirtualMachines/corretto-21.0.3/Contents/Home"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            echo "✅ Java 21로 전환: $JAVA_HOME"
+        fi
+    else
+        echo "✅ Java 21 사용 중 (버전: $JAVA_VERSION)"
+    fi
+    
+    nohup java -jar "$FRONTEND_JAR_FILE" > "$FRONTEND_LOG_FILE" 2>&1 &
+    echo $! > "$FRONTEND_PID_FILE"
+    
+    echo "✅ 프론트엔드 서버가 시작되었습니다. (PID: $(cat $FRONTEND_PID_FILE))"
+    echo "📋 로그 확인: tail -f $FRONTEND_LOG_FILE"
+    echo "🌐 프론트엔드 서버: http://localhost:8081"
+    
+    # 시작 확인
+    sleep 3
+    if ps -p $(cat "$FRONTEND_PID_FILE") > /dev/null 2>&1; then
+        echo "✅ 프론트엔드 서버가 정상적으로 실행 중입니다."
+    else
+        echo "❌ 프론트엔드 서버 시작 실패. 로그를 확인하세요: $FRONTEND_LOG_FILE"
+        exit 1
+    fi
+}
+
+stop_app() {
+    if [ ! -f "$PID_FILE" ]; then
+        echo "⚠️  백엔드 서버가 실행 중이 아닙니다."
+    else
+        PID=$(cat "$PID_FILE")
+        if ps -p $PID > /dev/null 2>&1; then
+            echo "=== 백엔드 서버 종료 중 ==="
+            kill $PID
+            rm "$PID_FILE"
+            
+            # 프로세스가 완전히 종료될 때까지 대기
+            for i in {1..10}; do
+                if ! ps -p $PID > /dev/null 2>&1; then
+                    break
+                fi
+                sleep 1
+            done
+            
+            if ps -p $PID > /dev/null 2>&1; then
+                echo "⚠️  강제 종료 중..."
+                kill -9 $PID
+            fi
+            
+            echo "✅ 백엔드 서버가 종료되었습니다."
+        else
+            echo "⚠️  프로세스를 찾을 수 없습니다."
+            rm "$PID_FILE"
+        fi
+    fi
+}
+
+stop_frontend() {
+    if [ ! -f "$FRONTEND_PID_FILE" ]; then
+        echo "⚠️  프론트엔드 서버가 실행 중이 아닙니다."
+        return
+    fi
+    
+    PID=$(cat "$FRONTEND_PID_FILE")
     if ps -p $PID > /dev/null 2>&1; then
-        echo "=== 애플리케이션 종료 중 ==="
+        echo "=== 프론트엔드 서버 종료 중 ==="
         kill $PID
-        rm "$PID_FILE"
+        rm "$FRONTEND_PID_FILE"
         
         # 프로세스가 완전히 종료될 때까지 대기
         for i in {1..10}; do
@@ -201,18 +339,34 @@ stop_app() {
             kill -9 $PID
         fi
         
-        echo "✅ 애플리케이션이 종료되었습니다."
+        echo "✅ 프론트엔드 서버가 종료되었습니다."
     else
         echo "⚠️  프로세스를 찾을 수 없습니다."
-        rm "$PID_FILE"
+        rm "$FRONTEND_PID_FILE"
     fi
 }
 
 restart_app() {
-    echo "=== 애플리케이션 재시작 중 ==="
+    echo "=== 백엔드 서버 재시작 중 ==="
     stop_app
     sleep 2
     start_app
+}
+
+restart_frontend() {
+    echo "=== 프론트엔드 서버 재시작 중 ==="
+    stop_frontend
+    sleep 2
+    start_frontend
+}
+
+restart_all() {
+    echo "=== 전체 서버 재시작 중 ==="
+    stop_app
+    stop_frontend
+    sleep 2
+    start_app
+    start_frontend
 }
 
 status_app() {
@@ -255,29 +409,68 @@ case "$1" in
     build-backend)
         build_backend
         ;;
+    build-frontend-server)
+        build_frontend_server
+        ;;
     start)
         start_app
+        ;;
+    start-frontend)
+        start_frontend
+        ;;
+    start-all)
+        start_app
+        start_frontend
         ;;
     stop)
         stop_app
         ;;
+    stop-frontend)
+        stop_frontend
+        ;;
+    stop-all)
+        stop_app
+        stop_frontend
+        ;;
     restart)
         restart_app
+        ;;
+    restart-frontend)
+        restart_frontend
+        ;;
+    restart-all)
+        restart_all
         ;;
     status)
         status_app
         ;;
     *)
-        echo "사용법: $0 {build|build-frontend|build-backend|start|stop|restart|status}"
+        echo "사용법: $0 {build|build-frontend|build-backend|build-frontend-server|start|start-frontend|start-all|stop|stop-frontend|stop-all|restart|restart-frontend|restart-all|status}"
         echo ""
-        echo "명령어:"
-        echo "  build          - 프론트엔드와 백엔드 모두 빌드"
-        echo "  build-frontend - 프론트엔드만 빌드"
-        echo "  build-backend  - 백엔드만 빌드"
-        echo "  start          - 애플리케이션 시작"
-        echo "  stop           - 애플리케이션 중지"
-        echo "  restart        - 애플리케이션 재시작"
-        echo "  status         - 애플리케이션 상태 확인"
+        echo "빌드 명령어:"
+        echo "  build                  - 프론트엔드, 백엔드, 프론트엔드 서버 모두 빌드"
+        echo "  build-frontend         - 프론트엔드만 빌드 (npm run build)"
+        echo "  build-backend          - 백엔드만 빌드"
+        echo "  build-frontend-server  - 프론트엔드 서버만 빌드"
+        echo ""
+        echo "시작 명령어:"
+        echo "  start                  - 백엔드 서버 시작 (8080)"
+        echo "  start-frontend          - 프론트엔드 서버 시작 (8081)"
+        echo "  start-all               - 백엔드와 프론트엔드 서버 모두 시작"
+        echo ""
+        echo "중지 명령어:"
+        echo "  stop                   - 백엔드 서버 중지"
+        echo "  stop-frontend           - 프론트엔드 서버 중지"
+        echo "  stop-all                - 백엔드와 프론트엔드 서버 모두 중지"
+        echo ""
+        echo "재시작 명령어:"
+        echo "  restart                - 백엔드 서버 재시작"
+        echo "  restart-frontend        - 프론트엔드 서버 재시작"
+        echo "  restart-all             - 백엔드와 프론트엔드 서버 모두 재시작"
+        echo ""
+        echo "기타:"
+        echo "  status                 - 백엔드 서버 상태 확인"
         exit 1
         ;;
 esac
+
