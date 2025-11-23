@@ -28,50 +28,83 @@ dependencies {
 }
 
 // npm install 태스크
-tasks.register<Exec>("npmInstall") {
+tasks.register("npmInstall") {
     group = "build"
     description = "Install npm dependencies"
-    workingDir = file("web")
     
     // node_modules가 없거나 package.json이 변경된 경우에만 실행
     inputs.file("web/package.json")
     inputs.file("web/package-lock.json")
     outputs.dir("web/node_modules")
     
-    // npm 11+ 버전에서 peer dependency 충돌 방지를 위해 --legacy-peer-deps 사용
-    // 운영서버에서도 확실하게 설치되도록 설정
-    if (System.getProperty("os.name").contains("Windows")) {
-        commandLine("cmd", "/c", "npm", "ci", "--legacy-peer-deps")
-    } else {
-        // npm ci는 package-lock.json을 기반으로 정확하게 설치 (운영서버에서 더 안정적)
-        commandLine("npm", "ci", "--legacy-peer-deps")
-    }
-    
-    // 에러 발생 시 상세 로그 출력
-    isIgnoreExitValue = false
-    
-    // npm install 완료 후 react-quill 설치 확인
     doLast {
+        val webDir = file("web")
+        val packageLock = file("web/package-lock.json")
+        
+        // package-lock.json이 없으면 npm install, 있으면 npm ci
+        try {
+            if (packageLock.exists()) {
+                println("📦 package-lock.json 발견. npm ci 실행 중...")
+                exec {
+                    workingDir = webDir
+                    if (System.getProperty("os.name").contains("Windows")) {
+                        commandLine("cmd", "/c", "npm", "ci", "--legacy-peer-deps")
+                    } else {
+                        commandLine("npm", "ci", "--legacy-peer-deps")
+                    }
+                    isIgnoreExitValue = false
+                }
+            } else {
+                println("⚠️  package-lock.json이 없습니다. npm install 실행 중...")
+                exec {
+                    workingDir = webDir
+                    if (System.getProperty("os.name").contains("Windows")) {
+                        commandLine("cmd", "/c", "npm", "install", "--legacy-peer-deps")
+                    } else {
+                        commandLine("npm", "install", "--legacy-peer-deps")
+                    }
+                    isIgnoreExitValue = false
+                }
+            }
+        } catch (e: Exception) {
+            throw GradleException(
+                "npm install 실패: ${e.message}\n" +
+                "수동으로 'cd ${webDir.absolutePath} && npm install --legacy-peer-deps'를 실행해보세요.",
+                e
+            )
+        }
+        
+        // npm install 완료 후 react-quill 설치 확인
         val reactQuillDir = file("web/node_modules/react-quill")
         val reactQuillTypes = file("web/node_modules/react-quill/lib/index.d.ts")
         val reactQuillMain = file("web/node_modules/react-quill/lib/index.js")
+        val nodeModules = file("web/node_modules")
         
+        // node_modules 전체 확인
+        if (!nodeModules.exists()) {
+            throw GradleException(
+                "node_modules 디렉토리가 생성되지 않았습니다: ${nodeModules.absolutePath}\n" +
+                "npm install이 실패했을 수 있습니다. 수동으로 'cd ${webDir.absolutePath} && npm install --legacy-peer-deps'를 실행해보세요."
+            )
+        }
+        
+        // react-quill 확인
         if (!reactQuillDir.exists()) {
             throw GradleException(
                 "react-quill 디렉토리가 없습니다: ${reactQuillDir.absolutePath}\n" +
-                "수동으로 'cd mongddang-front/web && npm ci --legacy-peer-deps'를 실행해보세요."
+                "package.json에 react-quill이 있는지 확인하고, 수동으로 'cd ${webDir.absolutePath} && npm install --legacy-peer-deps'를 실행해보세요."
             )
         }
         if (!reactQuillTypes.exists()) {
             throw GradleException(
                 "react-quill 타입 정의 파일이 없습니다: ${reactQuillTypes.absolutePath}\n" +
-                "수동으로 'cd mongddang-front/web && npm ci --legacy-peer-deps'를 실행해보세요."
+                "react-quill 설치가 불완전합니다. 수동으로 'cd ${webDir.absolutePath} && npm install react-quill --legacy-peer-deps'를 실행해보세요."
             )
         }
         if (!reactQuillMain.exists()) {
             throw GradleException(
                 "react-quill 메인 파일이 없습니다: ${reactQuillMain.absolutePath}\n" +
-                "수동으로 'cd mongddang-front/web && npm ci --legacy-peer-deps'를 실행해보세요."
+                "react-quill 설치가 불완전합니다. 수동으로 'cd ${webDir.absolutePath} && npm install react-quill --legacy-peer-deps'를 실행해보세요."
             )
         }
         println("✅ react-quill 설치 확인 완료:")
