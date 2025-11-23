@@ -32,10 +32,33 @@ tasks.register("npmInstall") {
     group = "build"
     description = "Install npm dependencies"
     
-    // node_modules가 없거나 package.json이 변경된 경우에만 실행
+    // package.json과 package-lock.json을 inputs로 설정
     inputs.file("web/package.json")
     inputs.file("web/package-lock.json")
+    
+    // npm ci가 생성하는 .package-lock.json을 outputs로 사용
+    // 이 파일이 있으면 npm ci가 성공적으로 실행된 것으로 간주
+    outputs.file("web/node_modules/.package-lock.json")
+    
+    // node_modules 디렉토리도 outputs로 추가 (하지만 .package-lock.json이 더 정확함)
     outputs.dir("web/node_modules")
+    
+    // package-lock.json이 변경되었거나 .package-lock.json이 없으면 실행
+    outputs.upToDateWhen {
+        val packageLockHash = file("web/package-lock.json").let { 
+            if (it.exists()) it.hashCode() else 0 
+        }
+        val installedLock = file("web/node_modules/.package-lock.json")
+        
+        // .package-lock.json이 있고, package-lock.json이 변경되지 않았을 때만 up-to-date
+        val isUpToDate = installedLock.exists()
+        
+        if (!isUpToDate) {
+            println("⚠️  node_modules/.package-lock.json이 없습니다. npm install을 실행합니다.")
+        }
+        
+        return@upToDateWhen isUpToDate
+    }
     
     doLast {
         val webDir = file("web")
