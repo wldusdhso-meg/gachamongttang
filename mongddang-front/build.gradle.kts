@@ -94,12 +94,13 @@ tasks.register<Exec>("buildFrontend") {
         val reactQuillDir = file("web/node_modules/react-quill")
         val reactQuillTypes = file("web/node_modules/react-quill/lib/index.d.ts")
         val reactQuillMain = file("web/node_modules/react-quill/lib/index.js")
+        val quillDir = file("web/node_modules/quill")
         
         if (!nodeModules.exists()) {
-            throw GradleException("node_modules 디렉토리가 없습니다. npm install을 먼저 실행하세요.")
+            throw GradleException("node_modules 디렉토리가 없습니다: ${nodeModules.absolutePath}")
         }
         if (!reactQuillDir.exists()) {
-            throw GradleException("react-quill이 설치되지 않았습니다. npm install을 먼저 실행하세요.")
+            throw GradleException("react-quill이 설치되지 않았습니다: ${reactQuillDir.absolutePath}")
         }
         if (!reactQuillTypes.exists()) {
             throw GradleException("react-quill 타입 정의 파일이 없습니다: ${reactQuillTypes.absolutePath}")
@@ -107,24 +108,21 @@ tasks.register<Exec>("buildFrontend") {
         if (!reactQuillMain.exists()) {
             throw GradleException("react-quill 메인 파일이 없습니다: ${reactQuillMain.absolutePath}")
         }
-        println("✅ react-quill 모듈 확인:")
-        println("   - node_modules: ${nodeModules.absolutePath}")
-        println("   - react-quill 디렉토리: ${reactQuillDir.absolutePath}")
-        println("   - 타입 파일: ${reactQuillTypes.absolutePath}")
-        println("   - 메인 파일: ${reactQuillMain.absolutePath}")
-        
-        // package.json에서 react-quill 확인
-        val packageJson = file("web/package.json")
-        if (packageJson.exists()) {
-            val content = packageJson.readText()
-            if (!content.contains("react-quill")) {
-                throw GradleException("package.json에 react-quill이 없습니다.")
-            }
+        if (!quillDir.exists()) {
+            throw GradleException("quill이 설치되지 않았습니다: ${quillDir.absolutePath}")
         }
+        
+        println("✅ 빌드 전 의존성 확인 완료:")
+        println("   - node_modules: ${nodeModules.absolutePath}")
+        println("   - react-quill: ${reactQuillDir.absolutePath}")
+        println("   - react-quill/lib/index.js: ${reactQuillMain.absolutePath}")
+        println("   - quill: ${quillDir.absolutePath}")
     }
     
     // 환경 변수 설정 (Vite가 node_modules를 찾을 수 있도록)
     environment("NODE_PATH", file("web").absolutePath)
+    environment("NODE_ENV", "production")
+    
     commandLine("npm", "run", "build")
     
     inputs.dir("web/src")
