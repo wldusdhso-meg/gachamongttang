@@ -32,12 +32,22 @@ tasks.register<Exec>("npmInstall") {
     group = "build"
     description = "Install npm dependencies"
     workingDir = file("web")
-    commandLine("npm", "install")
     
+    // 운영서버에서도 확실하게 설치되도록 --legacy-peer-deps 사용
     // node_modules가 없거나 package.json이 변경된 경우에만 실행
     inputs.file("web/package.json")
     inputs.file("web/package-lock.json")
     outputs.dir("web/node_modules")
+    
+    // 운영서버에서도 확실하게 설치되도록 --legacy-peer-deps 사용
+    if (System.getProperty("os.name").contains("Windows")) {
+        commandLine("cmd", "/c", "npm", "install", "--legacy-peer-deps")
+    } else {
+        commandLine("npm", "install", "--legacy-peer-deps")
+    }
+    
+    // 에러 발생 시 상세 로그 출력
+    isIgnoreExitValue = false
 }
 
 // 프론트엔드 빌드 태스크
