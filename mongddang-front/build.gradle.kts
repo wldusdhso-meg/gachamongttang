@@ -41,9 +41,10 @@ tasks.register<Exec>("npmInstall") {
     // npm 11+ 버전에서 peer dependency 충돌 방지를 위해 --legacy-peer-deps 사용
     // 운영서버에서도 확실하게 설치되도록 설정
     if (System.getProperty("os.name").contains("Windows")) {
-        commandLine("cmd", "/c", "npm", "install", "--legacy-peer-deps")
+        commandLine("cmd", "/c", "npm", "ci", "--legacy-peer-deps")
     } else {
-        commandLine("npm", "install", "--legacy-peer-deps")
+        // npm ci는 package-lock.json을 기반으로 정확하게 설치 (운영서버에서 더 안정적)
+        commandLine("npm", "ci", "--legacy-peer-deps")
     }
     
     // 에러 발생 시 상세 로그 출력
@@ -53,15 +54,30 @@ tasks.register<Exec>("npmInstall") {
     doLast {
         val reactQuillDir = file("web/node_modules/react-quill")
         val reactQuillTypes = file("web/node_modules/react-quill/lib/index.d.ts")
-        if (!reactQuillDir.exists() || !reactQuillTypes.exists()) {
+        val reactQuillMain = file("web/node_modules/react-quill/lib/index.js")
+        
+        if (!reactQuillDir.exists()) {
             throw GradleException(
-                "react-quill이 제대로 설치되지 않았습니다.\n" +
-                "디렉토리 존재: ${reactQuillDir.exists()}\n" +
-                "타입 파일 존재: ${reactQuillTypes.exists()}\n" +
-                "수동으로 'cd mongddang-front/web && npm install --legacy-peer-deps'를 실행해보세요."
+                "react-quill 디렉토리가 없습니다: ${reactQuillDir.absolutePath}\n" +
+                "수동으로 'cd mongddang-front/web && npm ci --legacy-peer-deps'를 실행해보세요."
             )
         }
-        println("✅ react-quill 설치 확인 완료: ${reactQuillTypes.absolutePath}")
+        if (!reactQuillTypes.exists()) {
+            throw GradleException(
+                "react-quill 타입 정의 파일이 없습니다: ${reactQuillTypes.absolutePath}\n" +
+                "수동으로 'cd mongddang-front/web && npm ci --legacy-peer-deps'를 실행해보세요."
+            )
+        }
+        if (!reactQuillMain.exists()) {
+            throw GradleException(
+                "react-quill 메인 파일이 없습니다: ${reactQuillMain.absolutePath}\n" +
+                "수동으로 'cd mongddang-front/web && npm ci --legacy-peer-deps'를 실행해보세요."
+            )
+        }
+        println("✅ react-quill 설치 확인 완료:")
+        println("   - 디렉토리: ${reactQuillDir.absolutePath}")
+        println("   - 타입 파일: ${reactQuillTypes.absolutePath}")
+        println("   - 메인 파일: ${reactQuillMain.absolutePath}")
     }
 }
 
