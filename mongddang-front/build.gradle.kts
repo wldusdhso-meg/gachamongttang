@@ -56,12 +56,23 @@ tasks.register<Exec>("buildFrontend") {
     description = "Build frontend React application"
     dependsOn("npmInstall")
     workingDir = file("web")
+    
+    // npm install이 완료되었는지 확인
+    doFirst {
+        val nodeModules = file("web/node_modules/react-quill")
+        if (!nodeModules.exists()) {
+            throw GradleException("react-quill이 설치되지 않았습니다. npm install을 먼저 실행하세요.")
+        }
+        println("✅ react-quill 모듈 확인: ${nodeModules.absolutePath}")
+    }
+    
     commandLine("npm", "run", "build")
     
     inputs.dir("web/src")
     inputs.file("web/package.json")
     inputs.file("web/tsconfig.json")
     inputs.file("web/vite.config.ts")
+    inputs.dir("web/node_modules")
     outputs.dir("web/dist")
     
     doLast {
