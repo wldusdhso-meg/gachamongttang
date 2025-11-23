@@ -75,10 +75,22 @@ tasks.register<Exec>("buildFrontend") {
     // npm install이 완료되었는지 확인
     doFirst {
         val nodeModules = file("web/node_modules/react-quill")
+        val reactQuillTypes = file("web/node_modules/react-quill/lib/index.d.ts")
+        val reactQuillMain = file("web/node_modules/react-quill/lib/index.js")
+        
         if (!nodeModules.exists()) {
             throw GradleException("react-quill이 설치되지 않았습니다. npm install을 먼저 실행하세요.")
         }
-        println("✅ react-quill 모듈 확인: ${nodeModules.absolutePath}")
+        if (!reactQuillTypes.exists()) {
+            throw GradleException("react-quill 타입 정의 파일이 없습니다: ${reactQuillTypes.absolutePath}")
+        }
+        if (!reactQuillMain.exists()) {
+            throw GradleException("react-quill 메인 파일이 없습니다: ${reactQuillMain.absolutePath}")
+        }
+        println("✅ react-quill 모듈 확인:")
+        println("   - 디렉토리: ${nodeModules.absolutePath}")
+        println("   - 타입 파일: ${reactQuillTypes.absolutePath}")
+        println("   - 메인 파일: ${reactQuillMain.absolutePath}")
     }
     
     commandLine("npm", "run", "build")
