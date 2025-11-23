@@ -27,12 +27,32 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+// npm install 태스크
+tasks.register<Exec>("npmInstall") {
+    group = "build"
+    description = "Install npm dependencies"
+    workingDir = file("web")
+    commandLine("npm", "install")
+    
+    // node_modules가 없거나 package.json이 변경된 경우에만 실행
+    inputs.file("web/package.json")
+    inputs.file("web/package-lock.json")
+    outputs.dir("web/node_modules")
+}
+
 // 프론트엔드 빌드 태스크
 tasks.register<Exec>("buildFrontend") {
     group = "build"
     description = "Build frontend React application"
+    dependsOn("npmInstall")
     workingDir = file("web")
     commandLine("npm", "run", "build")
+    
+    inputs.dir("web/src")
+    inputs.file("web/package.json")
+    inputs.file("web/tsconfig.json")
+    inputs.file("web/vite.config.ts")
+    outputs.dir("web/dist")
     
     doLast {
         // web/dist/* 를 src/main/resources/static/ 로 복사
